@@ -20,7 +20,7 @@ distancia_porcentaje_tp = Decimal(input("Ingrese el porcentaje de distancia para
 distancia_porcentaje_tplcd = Decimal(input("Ingrese el porcentaje de distancia para el Take Profit LCD (ej. 0.5 para 0.5%): ")) / Decimal('100')
 estado = input("¿Deseas usar Take Profit? (si o No): ").lower()
 estado = True if estado == "si" else False
-distancia_porcentaje_sl = Decimal(numero_recompras * factor_multiplicador_distancia / 100) + Decimal("0.006")  # % Porcentaje en la distancia para colocar el take profit a un 0.6% de la ultima recompra
+distancia_porcentaje_sl = Decimal(numero_recompras * factor_multiplicador_distancia / 100) + Decimal("0.006")  # % Porcentaje en la distancia para colocar el take profit a un 6% de la ultima recompra
 Save_currentprice= {}
 
 print("\nParámetros definidos para operar:")
@@ -61,7 +61,7 @@ def get_pnl(symbol):
 
     for order in closed_orders_list:
         pnl_cerrada = float(order['closedPnl'])
-        titulo = f"<b>🎉 Posición ganada {symbol} 🎉</b>\n\n"
+        titulo = f"<b> PNL Realizado {symbol} </b>\n\n"
         subtitule = f"💰 PNL realizado 💰: {pnl_cerrada:.2f}$ USDT."
         mensaje_pnl = titulo + subtitule
         enviar_mensaje_telegram(chat_id=chat_id, mensaje=mensaje_pnl) 
@@ -295,68 +295,70 @@ def adjust_price(symbol, price):
     
 def monitor(base_asset_qty_final, numero_recompras):
     try:
-        while True:  # Bucle infinito para monitorear constantemente
-            
+        while True:  
             positions_list = get_current_position(symbol)
 
-            if positions_list and any(Decimal(position['size']) != 0 for position in positions_list):  # Si hay una posición abierta                
+            if positions_list and any(Decimal(position['size']) != 0 for position in positions_list):  
                 current_price = Decimal(positions_list[0]['avgPrice'])
                 size = Decimal(positions_list[0]['size'])
 
-                # Obtener órdenes abiertas y contar recompras realizadas
                 open_orders_response = session.get_open_orders(category="linear", symbol=symbol)
                 open_orders = open_orders_response.get('result', {}).get('list', [])
                 recompras_realizadas = sum(1 for order in open_orders if order.get('orderType') == "Limit")
 
-                # 📌 1️⃣ Si el precio de entrada cambia
                 if symbol in Save_currentprice and Save_currentprice[symbol] != current_price:
                     print(f"El precio de entrada para {symbol} ha cambiado. Actualizando Take Profit...")
 
-                    # Cancelar órdenes TP (reduceOnly = True)
                     tp_limit_orders = [order for order in open_orders if order.get('orderType') == "Limit" and order.get('reduceOnly') == True]
                     for order in tp_limit_orders:
                         cancel_response = session.cancel_order(category="linear", symbol=symbol, orderId=order['orderId'])
                         if 'result' in cancel_response and cancel_response['result']:
                             print(f"Orden de Take Profit cancelada para {symbol}: {cancel_response}")
 
-                    # Actualizar Take Profit con LCD
                     take_profit_LCD(symbol, base_asset_qty_final)
                     Save_currentprice[symbol] = current_price
                     print(f"Nuevo precio de entrada guardado para {symbol}: {current_price}")
-                
-                time.sleep(20)
 
-                # 📌 2️⃣ Si el tamaño de la posición alcanza el límite y hay recompras disponibles
+                time.sleep(15)
+
                 if size == base_asset_qty_final and recompras_realizadas < numero_recompras:
                     print(f"Tamaño de la posición alcanzado en {symbol}. Cancelando órdenes pendientes...")
                     session.cancel_all_orders(category="linear", symbol=symbol)
-                    recompras(symbol, base_asset_qty_final, distancia_porcentaje_sl, side)  # Colocar recompras o reventas
-                    take_profit(symbol)  # Colocar Take profit
+                    recompras(symbol, base_asset_qty_final, distancia_porcentaje_sl, side)  
+                    take_profit(symbol)
+                    get_pnl(symbol)  
                     print(f"Recolocando órdenes límites en {symbol}.")
             
-            else:  # Si no hay posición abierta
+            else:  
                 print("Posición cerrada")
                 session.cancel_all_orders(category="linear", symbol=symbol)
+
+                pnl_cerrado = get_pnl(symbol)  
+
+                if pnl_cerrado < 0:  
+                    print("⚠️ Cerrando en perdidas. Deteniendo bot.")
+                    get_pnl(symbol)
+                    break  
+
                 tickers_response = session.get_tickers(symbol=symbol, category="linear")
                 tickers_list = tickers_response.get("result", {}).get("list", [])
 
                 if tickers_list:
                     last_price = float(tickers_list[0]["lastPrice"])
         
-                    # 📌 3️⃣ Si el último precio es menor o igual al precio guardado, abrir posición
                     if symbol in Save_currentprice and Save_currentprice[symbol] is not None and last_price <= Save_currentprice[symbol]:
-                        mensaje=(f"Abriendo nueva posición para {symbol} a precio {last_price}...")
+                        mensaje = f"Abriendo nueva posición para {symbol} a precio {last_price}..."
                         enviar_mensaje_telegram(chat_id=chat_id, mensaje=mensaje)
                         print(mensaje)
                         abrir_posicion(symbol, base_asset_qty_final)
                     else:
                         print(f"Esperando para abrir nueva posición para {symbol}. El precio actual ({last_price}) tiene que llegar a ({Save_currentprice}).")
                 
-            # Esperar antes de la siguiente iteración
             time.sleep(5)
 
     except Exception as e:
         print(f"⚠️ Error en la función monitor: {str(e)}")
+
 
 def main():
     try:
