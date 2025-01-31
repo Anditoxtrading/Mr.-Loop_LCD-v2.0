@@ -18,7 +18,7 @@ side = "Buy"
 factor_multiplicador_distancia = Decimal(input("Ingrese el porcentaje de distancia para cada recompra (ej. 2 para 2%): "))
 distancia_porcentaje_tp = Decimal(input("Ingrese el porcentaje de distancia para el Take Profit (ej. 1.5 para 1.5%): ")) / Decimal('100')
 distancia_porcentaje_tplcd = Decimal(input("Ingrese el porcentaje de distancia para el Take Profit LCD (ej. 0.5 para 0.5%): ")) / Decimal('100')
-estado = input("¿Deseas usar Take Profit? (si o No): ").lower()
+estado = input("¿Deseas usar Take Profit? (Si o No): ").lower()
 estado = True if estado == "si" else False
 distancia_porcentaje_sl = Decimal(numero_recompras * factor_multiplicador_distancia / 100) + Decimal("0.006")  # % Porcentaje en la distancia para colocar el take profit a un 6% de la ultima recompra
 Save_currentprice= {}
@@ -62,7 +62,7 @@ def get_pnl(symbol):
     for order in closed_orders_list:
         pnl_cerrada = float(order['closedPnl'])
         titulo = f"<b> PNL Realizado {symbol} </b>\n\n"
-        subtitule = f"💰 PNL realizado 💰: {pnl_cerrada:.2f}$ USDT."
+        subtitule = f"💰 PNL 💰: {pnl_cerrada:.2f}$ USDT."
         mensaje_pnl = titulo + subtitule
         enviar_mensaje_telegram(chat_id=chat_id, mensaje=mensaje_pnl) 
         print(mensaje_pnl)
@@ -332,27 +332,29 @@ def monitor(base_asset_qty_final, numero_recompras):
             else:  
                 print("Posición cerrada")
                 session.cancel_all_orders(category="linear", symbol=symbol)
+                closed_orders_response=session.get_closed_pnl(category="linear", symbol=symbol, limit=1)
+                closed_orders_list = closed_orders_response['result']['list']
+                for order in closed_orders_list:
+                    pnl_cerrada = float(order['closedPnl'])
+                if pnl_cerrada < 0:  
+                    print("⚠️ Cerrando en pérdidas. Deteniendo bot.")
+                    print(pnl_cerrada)
+                    return  # Detiene la ejecución de la función
+                else: # CONTINUA ANALIZANDO ESPERANDO QUE EL PRECIO REGRESE AL PRECIO DE ENTRADA QUE TENIA LA POSICION
+                    tickers_response = session.get_tickers(symbol=symbol, category="linear")
+                    tickers_list = tickers_response.get("result", {}).get("list", [])
 
-                pnl_cerrado = get_pnl(symbol)  
-
-                if pnl_cerrado < 0:  
-                    print("⚠️ Cerrando en perdidas. Deteniendo bot.")
-                    get_pnl(symbol)
-                    break  
-
-                tickers_response = session.get_tickers(symbol=symbol, category="linear")
-                tickers_list = tickers_response.get("result", {}).get("list", [])
-
-                if tickers_list:
-                    last_price = float(tickers_list[0]["lastPrice"])
-        
-                    if symbol in Save_currentprice and Save_currentprice[symbol] is not None and last_price <= Save_currentprice[symbol]:
-                        mensaje = f"Abriendo nueva posición para {symbol} a precio {last_price}..."
-                        enviar_mensaje_telegram(chat_id=chat_id, mensaje=mensaje)
-                        print(mensaje)
-                        abrir_posicion(symbol, base_asset_qty_final)
-                    else:
-                        print(f"Esperando para abrir nueva posición para {symbol}. El precio actual ({last_price}) tiene que llegar a ({Save_currentprice}).")
+                    if tickers_list:
+                        last_price = float(tickers_list[0]["lastPrice"])
+            
+                        if symbol in Save_currentprice and Save_currentprice[symbol] is not None and last_price <= Save_currentprice[symbol]:
+                            mensaje = f"Abriendo nueva posición para {symbol} a precio {last_price}..."
+                            get_pnl(symbol) 
+                            enviar_mensaje_telegram(chat_id=chat_id, mensaje=mensaje)
+                            print(mensaje)
+                            abrir_posicion(symbol, base_asset_qty_final)
+                        else:
+                            print(f"Esperando para abrir nueva posición para {symbol}. El precio actual ({last_price}) tiene que llegar a ({Save_currentprice}).")
                 
             time.sleep(5)
 
