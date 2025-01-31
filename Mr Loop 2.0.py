@@ -18,7 +18,7 @@ side = "Buy"
 factor_multiplicador_distancia = Decimal(input("Ingrese el porcentaje de distancia para cada recompra (ej. 2 para 2%): "))
 distancia_porcentaje_tp = Decimal(input("Ingrese el porcentaje de distancia para el Take Profit (ej. 1.5 para 1.5%): ")) / Decimal('100')
 distancia_porcentaje_tplcd = Decimal(input("Ingrese el porcentaje de distancia para el Take Profit LCD (ej. 0.5 para 0.5%): ")) / Decimal('100')
-estado = input("¿Deseas usar Take Profit? (Si o No): ").lower()
+estado = input("¿Deseas usar Take Profit total? (Si o No): ").lower()
 estado = True if estado == "si" else False
 distancia_porcentaje_sl = Decimal(numero_recompras * factor_multiplicador_distancia / 100) + Decimal("0.006")  # % Porcentaje en la distancia para colocar el take profit a un 6% de la ultima recompra
 Save_currentprice= {}
