@@ -341,7 +341,7 @@ def monitor(base_asset_qty_final, numero_recompras):
                                 else:
                                     print(f"Esperando para abrir nueva posición para {symbol}. El precio actual ({last_price}) tiene que llegar a ({Save_currentprice[symbol]}).")
                     
-                time.sleep(5)
+                time.sleep(2)
             
             except Exception as inner_e:
                 print(f"⚠️ Error interno en monitor: {str(inner_e)}")
