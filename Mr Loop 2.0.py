@@ -21,7 +21,7 @@ distancia_porcentaje_tplcd = Decimal(input("Ingrese el porcentaje de distancia p
 estado = input("¿Deseas usar Take Profit Total? (Si o No): ").lower()
 estado = True if estado == "si" else False
 distancia_porcentaje_sl = Decimal(numero_recompras * factor_multiplicador_distancia / 100) + Decimal("0.006")  # % Porcentaje en la distancia para colocar el take profit a un 6% de la ultima recompra
-Save_currentprice= {}
+Save_currentprice = {}
 save_sizeposition = {}
 
 print("\nParámetros definidos para operar:")
