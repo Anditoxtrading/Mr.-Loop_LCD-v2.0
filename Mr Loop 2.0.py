@@ -314,7 +314,7 @@ def monitor(base_asset_qty_final, numero_recompras):
                         Save_currentprice[symbol] = current_price
                         print(f"Nuevo precio de entrada guardado para {symbol}: {current_price}")
 
-                    time.sleep(15)
+                    time.sleep(10)
                     # Para cancelar recompras
                     if symbol in save_sizeposition and size == save_sizeposition[symbol] and recompras_realizadas < numero_recompras:
                         print(f"Tamaño de la posición alcanzado en {symbol}. Cancelando órdenes pendientes...")
@@ -352,7 +352,7 @@ def monitor(base_asset_qty_final, numero_recompras):
                                 else:
                                     print(f"Esperando para abrir nueva posición para {symbol}. El precio actual ({last_price}) tiene que llegar a ({Save_currentprice[symbol]}).")
                     
-                time.sleep(5)
+                time.sleep(2)
             
             except Exception as inner_e:
                 print(f"⚠️ Error interno en monitor: {str(inner_e)}")
