@@ -22,6 +22,7 @@ estado = input("¿Deseas usar Take Profit Total? (Si o No): ").lower()
 estado = True if estado == "si" else False
 distancia_porcentaje_sl = Decimal(numero_recompras * factor_multiplicador_distancia / 100) + Decimal("0.006")  # % Porcentaje en la distancia para colocar el take profit a un 6% de la ultima recompra
 Save_currentprice= {}
+save_sizeposition = {}
 
 print("\nParámetros definidos para operar:")
 print(f"Símbolo: {symbol}")
@@ -109,7 +110,7 @@ def take_profit(symbol, tp=estado):
         print(f"Error en Take_profit para {symbol}: {str(e)}")
 
         
-def take_profit_LCD(symbol, base_asset_qty_final):
+def take_profit_LCD(symbol):
     try:
         # Obtener la lista de posiciones actuales
         positions_list = get_current_position(symbol)
@@ -142,7 +143,7 @@ def take_profit_LCD(symbol, base_asset_qty_final):
             symbol=symbol,
             side=side_tp,
             orderType="Limit",
-            qty=str(qty_size-base_asset_qty_final),  # Utilizar el tamaño de la posición como qty
+            qty=str(qty_size-save_sizeposition),  # Utilizar el tamaño de la posición como qty
             price=str(price_tp),
             reduceOnly=True,
         )
@@ -213,6 +214,7 @@ def abrir_posicion(symbol, base_asset_qty_final):
         if positions_list and any(Decimal(position['size']) != 0 for position in positions_list):
             print("Ya hay una posición abierta. No se abrirá otra posición.")
             return
+        
         response_market_order = session.place_order(
             category="linear",
             symbol=symbol,
@@ -220,20 +222,29 @@ def abrir_posicion(symbol, base_asset_qty_final):
             orderType="Market",
             qty=base_asset_qty_final,
         )
+
         # Limpiar datos anteriores y guardar nueva información
         positions_list = get_current_position(symbol)  # Actualizar posiciones
         if positions_list and len(positions_list) > 0:
             Save_currentprice[symbol] = Decimal(positions_list[0]['avgPrice'])  # Guardar precio de entrada
+            save_sizeposition[symbol] = Decimal(positions_list[0]['size'])  # Guardar tamaño de la posición
+            mensaje= f"Precio de entrada: {Save_currentprice} Cantidad de monedas {save_sizeposition} "
+            print(mensaje)
+
         Mensaje_market = f"Orden Market Long en {symbol} abierta con éxito: {response_market_order}"
         enviar_mensaje_telegram(chat_id=chat_id, mensaje=Mensaje_market)
         print(Mensaje_market)
         time.sleep(3)
-        take_profit(symbol) # colocar Take profit
-        recompras(symbol, base_asset_qty_final, distancia_porcentaje_sl,side) # colocar recompras o reventas
+
+        take_profit(symbol)  # Colocar Take profit
+        recompras(symbol, base_asset_qty_final, distancia_porcentaje_sl, side)  # Colocar recompras o reventas
+        
         if response_market_order['retCode'] != 0:
             print("Error al abrir la posición: La orden de mercado no se completó correctamente.")
+    
     except Exception as e:
         print(f"Error al abrir la posición: {e}")
+
 def qty_step(symbol, amount_usdt):
     try:
         tickers = session.get_tickers(symbol=symbol, category="linear")
@@ -289,7 +300,7 @@ def monitor(base_asset_qty_final, numero_recompras):
                     open_orders_response = session.get_open_orders(category="linear", symbol=symbol)
                     open_orders = open_orders_response.get('result', {}).get('list', [])
                     recompras_realizadas = sum(1 for order in open_orders if order.get('orderType') == "Limit")
-
+                    # Para colocar take profit LCD y actualizacion del precio de entrada
                     if symbol in Save_currentprice and Save_currentprice[symbol] != current_price:
                         print(f"El precio de entrada para {symbol} ha cambiado. Actualizando Take Profit...")
 
@@ -299,20 +310,20 @@ def monitor(base_asset_qty_final, numero_recompras):
                             if 'result' in cancel_response and cancel_response['result']:
                                 print(f"Orden de Take Profit cancelada para {symbol}: {cancel_response}")
 
-                        take_profit_LCD(symbol, base_asset_qty_final)
+                        take_profit_LCD(symbol)
                         Save_currentprice[symbol] = current_price
                         print(f"Nuevo precio de entrada guardado para {symbol}: {current_price}")
 
                     time.sleep(15)
-
-                    if size == base_asset_qty_final and recompras_realizadas < numero_recompras:
+                    # Para cancelar recompras
+                    if size == save_sizeposition and recompras_realizadas < numero_recompras:
                         print(f"Tamaño de la posición alcanzado en {symbol}. Cancelando órdenes pendientes...")
                         session.cancel_all_orders(category="linear", symbol=symbol)
                         recompras(symbol, base_asset_qty_final, distancia_porcentaje_sl, side)  
                         take_profit(symbol)
                         get_pnl(symbol)  
                         print(f"Recolocando órdenes límites en {symbol}.")
-                
+                # Si la posicion esta cerrada
                 else:  
                     print("Posición cerrada")
                     session.cancel_all_orders(category="linear", symbol=symbol)
@@ -341,7 +352,7 @@ def monitor(base_asset_qty_final, numero_recompras):
                                 else:
                                     print(f"Esperando para abrir nueva posición para {symbol}. El precio actual ({last_price}) tiene que llegar a ({Save_currentprice[symbol]}).")
                     
-                time.sleep(2)
+                time.sleep(5)
             
             except Exception as inner_e:
                 print(f"⚠️ Error interno en monitor: {str(inner_e)}")
