@@ -234,7 +234,7 @@ def abrir_posicion(symbol, base_asset_qty_final):
         Mensaje_market = f"Orden Market Long en {symbol} abierta con éxito: {response_market_order}"
         enviar_mensaje_telegram(chat_id=chat_id, mensaje=Mensaje_market)
         print(Mensaje_market)
-        time.sleep(3)
+        time.sleep(2)
 
         take_profit(symbol)  # Colocar Take profit
         recompras(symbol, base_asset_qty_final, distancia_porcentaje_sl, side)  # Colocar recompras o reventas
@@ -352,7 +352,7 @@ def monitor(base_asset_qty_final, numero_recompras):
                                 else:
                                     print(f"Esperando para abrir nueva posición para {symbol}. El precio actual ({last_price}) tiene que llegar a ({Save_currentprice[symbol]}).")
                     
-                time.sleep(2)
+                time.sleep(3)
             
             except Exception as inner_e:
                 print(f"⚠️ Error interno en monitor: {str(inner_e)}")
