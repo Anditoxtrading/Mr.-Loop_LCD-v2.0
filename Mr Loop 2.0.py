@@ -143,7 +143,7 @@ def take_profit_LCD(symbol):
             symbol=symbol,
             side=side_tp,
             orderType="Limit",
-            qty=str(qty_size-save_sizeposition),  # Utilizar el tamaño de la posición como qty
+            qty=str(qty_size-save_sizeposition[symbol]),  # Utilizar el tamaño de la posición como qty
             price=str(price_tp),
             reduceOnly=True,
         )
