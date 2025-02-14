@@ -315,7 +315,7 @@ def monitor(base_asset_qty_final, numero_recompras):
                         print(f"Nuevo precio de entrada guardado para {symbol}: {current_price}")
 
                     time.sleep(10)
-                    # Para cancelar recompras
+                    # Para cancelar recompras y recolocar recompras
                     if symbol in save_sizeposition and size == save_sizeposition[symbol] and recompras_realizadas < numero_recompras:
                         print(f"Tamaño de la posición alcanzado en {symbol}. Cancelando órdenes pendientes...")
                         session.cancel_all_orders(category="linear", symbol=symbol)
